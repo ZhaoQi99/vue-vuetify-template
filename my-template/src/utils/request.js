@@ -1,7 +1,7 @@
 import axios from "axios";
 import router from "../router";
 import { Message, MessageBox } from "element-ui";
-const api = axios.create({
+const service = axios.create({
   baseURL: "/api",
   timeout: 3000,
   headers: { "Content-Type": "application/json;charset=UTF-8" }
@@ -9,43 +9,41 @@ const api = axios.create({
 });
 
 // request
-api.interceptors.request.use(
-  (config) => {
+service.interceptors.request.use(
+  config => {
     if (localStorage.Token !== undefined) {
       config.headers["Authorization"] = "Bearer" + " " + localStorage.Token;
     }
     return config;
   },
-  (error) => {
+  error => {
     return Promise.reject(error);
   }
 );
 
 //返回状态判断
-api.interceptors.response.use(
-  (res) => {
-    if (res.data.status === 200) {
-      return res.data;
-    } else if (res.data.status === 1002 || res.data.status === 1001) {
-      if (localStorage.isActive === true || localStorage.isActive === undefined) {
-        MessageBox.alert("由于用户长时间未操作,请重新登录!", "错误提示", { type: "warning" }).then(() => {
-          router.replace({
-            path: "/login",
-            query: { redirect: router.currentRoute.fullPath }
-          });
-          localStorage.clear();
+service.interceptors.response.use(
+  (response) => {
+    const res = response.data
+    if (res.status === 200 || response.status === 204) {
+      return res;
+    } else if (res.status === 1002 || res.status === 1001) {
+      MessageBox.alert("由于用户长时间未操作,请重新登录!", "错误提示", { type: "warning" }).then(() => {
+        router.replace({
+          path: "/login",
+          query: { redirect: router.currentRoute.fullPath }
         });
-      }
-      localStorage.isActive = false;
+        localStorage.clear();
+      });
       return new Promise(() => {});
     } else {
       // can user a table{status:type} in the future
       Message({
-        message: res.data.msg,
+        message: res.message || 'Error',
         type: "error"
       });
-      // return Promise.reject(res.data.msg);
-      return new Promise(() => {});
+      return Promise.reject(new Error(res.message || 'Error'));
+      // return new Promise(() => {});
     }
   },
   (error) => {
@@ -54,8 +52,12 @@ api.interceptors.response.use(
         message: "服务器内部错误!",
         type: "error"
       });
-    }
+    } else {
+      Message({
+        message: error.message,
+        type: "error"
+      });
     return Promise.reject(error);
   }
 );
-export default api;
+export default service;
