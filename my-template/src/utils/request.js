@@ -57,7 +57,9 @@ service.interceptors.response.use(
         message: error.message,
         type: "error"
       });
-    return Promise.reject(error);
+      return Promise.reject(error);
+    }
   }
 );
+
 export default service;
